@@ -1,0 +1,3069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FLEETDECK PRO — Autonomous Mobile Robot (AMR) Command & Digital Twin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #070a0f;
+    --bg-surface: #0c121c;
+    --panel: #111926;
+    --panel-hover: #162234;
+    --panel-border: #1c2b42;
+    --panel-border-bright: #2b4163;
+    
+    --text-primary: #edf2f8;
+    --text-secondary: #8fa3be;
+    --text-muted: #51637c;
+    
+    --cyan: #00f2fe;
+    --cyan-dim: rgba(0, 242, 254, 0.15);
+    --cyan-glow: rgba(0, 242, 254, 0.4);
+    
+    --emerald: #00e676;
+    --emerald-dim: rgba(0, 230, 118, 0.15);
+    
+    --amber: #ffb300;
+    --amber-dim: rgba(255, 179, 0, 0.15);
+    
+    --crimson: #ff3366;
+    --crimson-dim: rgba(255, 51, 102, 0.15);
+    --crimson-glow: rgba(255, 51, 102, 0.4);
+    
+    --purple: #a855f7;
+    --purple-dim: rgba(168, 85, 247, 0.15);
+    
+    --blue: #3b82f6;
+    --blue-dim: rgba(59, 130, 246, 0.15);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+
+  /* Background grid glow */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background: 
+      radial-gradient(circle at 10% 15%, rgba(0, 242, 254, 0.04) 0%, transparent 40%),
+      radial-gradient(circle at 85% 85%, rgba(168, 85, 247, 0.04) 0%, transparent 40%),
+      linear-gradient(to right, rgba(28, 43, 66, 0.12) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(28, 43, 66, 0.12) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app-shell {
+    position: relative;
+    z-index: 1;
+    max-width: 1720px;
+    margin: 0 auto;
+    padding: 14px 18px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* TOP HEADER HUD */
+  header {
+    background: rgba(17, 25, 38, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .brand-group {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .brand-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #0d1e33, #08101a);
+    border: 1.5px solid var(--cyan);
+    box-shadow: 0 0 14px var(--cyan-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .brand-logo svg {
+    width: 22px;
+    height: 22px;
+    stroke: var(--cyan);
+  }
+  .brand-title h1 {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    background: linear-gradient(90deg, #edf2f8, var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-transform: uppercase;
+  }
+  .brand-title p {
+    font-size: 11px;
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+    margin-top: 1px;
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 6px;
+    background: rgba(12, 18, 28, 0.8);
+    padding: 4px;
+    border-radius: 6px;
+    border: 1px solid var(--panel-border);
+  }
+  .nav-tab {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .nav-tab svg { width: 15px; height: 15px; stroke: currentColor; fill: none; }
+  .nav-tab:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .nav-tab.active {
+    background: var(--cyan-dim);
+    color: var(--cyan);
+    box-shadow: inset 0 0 0 1px var(--cyan), 0 0 12px var(--cyan-dim);
+  }
+
+  .hud-stats-bar {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .hud-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .hud-stat .hud-lbl {
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .hud-stat .hud-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .hud-val.ok { color: var(--emerald); }
+  .hud-val.warn { color: var(--amber); }
+  .hud-val.danger { color: var(--crimson); }
+  .hud-val.info { color: var(--cyan); }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .status-dot.pulse {
+    animation: statusPulse 2s infinite ease-in-out;
+  }
+  @keyframes statusPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .quick-btn {
+    background: var(--bg-surface);
+    border: 1px solid var(--panel-border);
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 7px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+  }
+  .quick-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--panel-border-bright);
+    background: var(--panel);
+  }
+  .quick-btn.active {
+    background: var(--cyan-dim);
+    color: var(--cyan);
+    border-color: var(--cyan);
+  }
+  .quick-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; }
+
+  .clock-display {
+    text-align: right;
+    padding-left: 6px;
+    border-left: 1px solid var(--panel-border);
+  }
+  .clock-display .time {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .clock-display .date {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  /* SUBHEADER BANNER FOR OFFLINE / ESTOP */
+  .system-banner {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 18px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    animation: slideDown 0.3s ease-out;
+  }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .system-banner.show { display: flex; }
+  .system-banner.estop {
+    background: rgba(255, 51, 102, 0.18);
+    border: 1px solid var(--crimson);
+    color: var(--crimson);
+    box-shadow: 0 0 16px var(--crimson-glow);
+  }
+  .system-banner.offline {
+    background: rgba(255, 179, 0, 0.15);
+    border: 1px solid var(--amber);
+    color: var(--amber);
+  }
+
+  /* TAB CONTENT CONTAINERS */
+  .tab-pane {
+    display: none;
+    animation: fadeIn 0.25s ease-out;
+  }
+  .tab-pane.active { display: block; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* SHARED PANEL STYLING */
+  .panel {
+    background: rgba(17, 25, 38, 0.75);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .panel:hover {
+    border-color: var(--panel-border-bright);
+  }
+  .panel-head {
+    padding: 10px 14px;
+    background: rgba(12, 18, 28, 0.7);
+    border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .panel-head h2 {
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .panel-head h2 svg {
+    width: 14px;
+    height: 14px;
+    stroke: var(--cyan);
+  }
+  .panel-tag {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+  }
+  .panel-tag.cyan { background: var(--cyan-dim); color: var(--cyan); }
+  .panel-tag.amber { background: var(--amber-dim); color: var(--amber); }
+  .panel-tag.crimson { background: var(--crimson-dim); color: var(--crimson); }
+  .panel-tag.emerald { background: var(--emerald-dim); color: var(--emerald); }
+  .panel-body {
+    padding: 14px;
+    flex: 1;
+  }
+
+  /* TAB 1: COMMAND MAP VIEW */
+  .map-view-grid {
+    display: grid;
+    grid-template-columns: 320px 1fr 340px;
+    gap: 14px;
+    align-items: start;
+  }
+  @media (max-width: 1380px) {
+    .map-view-grid { grid-template-columns: 300px 1fr; }
+    .map-view-grid > .col-right { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  }
+  @media (max-width: 980px) {
+    .map-view-grid { grid-template-columns: 1fr; }
+    .map-view-grid > .col-right { grid-template-columns: 1fr; }
+  }
+
+  /* FLEET LIST IN LEFT SIDEBAR */
+  .fleet-filter-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .filter-chip {
+    flex: 1;
+    background: var(--bg-surface);
+    border: 1px solid var(--panel-border);
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 4px 6px;
+    border-radius: 3px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-chip.active, .filter-chip:hover {
+    color: var(--text-primary);
+    border-color: var(--cyan);
+    background: var(--cyan-dim);
+  }
+
+  .fleet-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 480px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .fleet-scroll::-webkit-scrollbar { width: 4px; }
+  .fleet-scroll::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 2px; }
+
+  .bot-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--panel-border);
+    border-radius: 5px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  .bot-card::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0; width: 3px;
+    background: transparent;
+    transition: background 0.2s;
+  }
+  .bot-card:hover {
+    background: var(--panel-hover);
+    border-color: var(--panel-border-bright);
+    transform: translateX(2px);
+  }
+  .bot-card.selected {
+    background: rgba(0, 242, 254, 0.07);
+    border-color: var(--cyan);
+    box-shadow: 0 0 14px var(--cyan-dim);
+  }
+  .bot-card.selected::before { background: var(--cyan); }
+
+  .bot-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .bot-id-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .bot-id {
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .bot-model {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .state-badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 2px 7px;
+    border-radius: 10px;
+    text-transform: uppercase;
+  }
+  .state-badge.navigating { background: var(--cyan-dim); color: var(--cyan); }
+  .state-badge.picking { background: var(--purple-dim); color: var(--purple); }
+  .state-badge.charging { background: var(--emerald-dim); color: var(--emerald); }
+  .state-badge.idle { background: rgba(255, 255, 255, 0.07); color: var(--text-secondary); }
+  .state-badge.safety_hold { background: var(--amber-dim); color: var(--amber); }
+  .state-badge.fault { background: var(--crimson-dim); color: var(--crimson); }
+  .state-badge.offline { background: #16202c; color: var(--text-muted); }
+
+  .bot-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-top: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 6px 8px;
+    border-radius: 3px;
+  }
+  .bot-meta-item .lbl {
+    color: var(--text-muted);
+    font-size: 8.5px;
+    display: block;
+    margin-bottom: 1px;
+  }
+  .bot-meta-item .val {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .bot-battery-bar {
+    height: 4px;
+    background: var(--panel-border);
+    border-radius: 2px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+  .bot-battery-fill {
+    height: 100%;
+    background: var(--emerald);
+    transition: width 0.3s, background 0.3s;
+  }
+  .bot-battery-fill.med { background: var(--amber); }
+  .bot-battery-fill.low { background: var(--crimson); }
+
+  /* MAP CONTAINER CANVAS / SVG */
+  .map-wrapper {
+    position: relative;
+    background: #080c14;
+    border-radius: 6px;
+    border: 1px solid var(--panel-border);
+    overflow: hidden;
+    height: 620px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.7);
+  }
+  .map-wrapper.halted {
+    filter: grayscale(0.7) brightness(0.65);
+  }
+
+  .map-toolbar {
+    position: absolute;
+    top: 12px;
+    left: 14px;
+    right: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .map-toolbar > * { pointer-events: auto; }
+
+  .map-layers-group {
+    display: flex;
+    gap: 6px;
+    background: rgba(12, 18, 28, 0.9);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--panel-border);
+    padding: 4px 6px;
+    border-radius: 4px;
+  }
+  .layer-toggle {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .layer-toggle:hover { color: var(--text-primary); }
+  .layer-toggle.active {
+    background: var(--cyan-dim);
+    color: var(--cyan);
+  }
+
+  .map-zoom-group {
+    display: flex;
+    gap: 4px;
+    background: rgba(12, 18, 28, 0.9);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--panel-border);
+    padding: 4px;
+    border-radius: 4px;
+  }
+  .zoom-btn {
+    width: 28px;
+    height: 28px;
+    background: var(--bg-surface);
+    border: 1px solid var(--panel-border);
+    color: var(--text-primary);
+    border-radius: 3px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .zoom-btn:hover {
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+
+  #warehouse-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: crosshair;
+  }
+
+  .map-hud-legend {
+    position: absolute;
+    bottom: 12px;
+    left: 14px;
+    right: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(12, 18, 28, 0.85);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--panel-border);
+    padding: 8px 14px;
+    border-radius: 4px;
+    font-size: 10px;
+    color: var(--text-secondary);
+    pointer-events: auto;
+    z-index: 10;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .legend-items {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .legend-color {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  /* DISPATCH CONTROLLER */
+  .dispatch-card {
+    background: rgba(17, 25, 38, 0.75);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .dispatch-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .field-group label {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+  .custom-select, .custom-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    color: var(--text-primary);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 7px 9px;
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .custom-select:focus, .custom-input:focus {
+    border-color: var(--cyan);
+  }
+  .custom-select:disabled, .custom-input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .btn-dispatch {
+    background: linear-gradient(135deg, #00f2fe, #00a8b5);
+    color: #04141e;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 14px rgba(0, 242, 254, 0.3);
+  }
+  .btn-dispatch:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(0, 242, 254, 0.45);
+  }
+  .btn-dispatch:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  /* RIGHT SIDEBAR MODULES */
+  .estop-module {
+    text-align: center;
+    padding: 18px 14px;
+    background: radial-gradient(circle at 50% 10%, rgba(255, 51, 102, 0.12), transparent 70%), var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+  }
+  .estop-button {
+    width: 120px;
+    height: 120px;
+    margin: 4px auto 12px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ff5277, #e01747 60%, #850b28 100%);
+    border: 4px solid #3d0e19;
+    box-shadow: 0 0 0 4px rgba(255, 51, 102, 0.2), 0 10px 24px rgba(255, 51, 102, 0.45), inset 0 2px 8px rgba(255, 255, 255, 0.3);
+    color: #fff;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.05em;
+    line-height: 1.25;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: estopPulse 2.5s infinite;
+  }
+  .estop-button:active {
+    transform: scale(0.96);
+  }
+  .estop-button.resumed {
+    background: radial-gradient(circle at 35% 30%, #43e6a2, #00b368 60%, #00663b 100%);
+    border-color: #0c3823;
+    box-shadow: 0 0 0 4px rgba(0, 230, 118, 0.2), 0 10px 24px rgba(0, 230, 118, 0.45), inset 0 2px 8px rgba(255, 255, 255, 0.3);
+    animation: none;
+  }
+  @keyframes estopPulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(255, 51, 102, 0.25), 0 10px 24px rgba(255, 51, 102, 0.45); }
+    50% { box-shadow: 0 0 0 7px rgba(255, 51, 102, 0.45), 0 12px 32px rgba(255, 51, 102, 0.7); }
+  }
+
+  /* HUMAN DETECTION MINI CARD */
+  .human-radar-mini {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .human-status-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    background: var(--bg-surface);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    transition: border-color 0.2s;
+  }
+  .human-status-box.locked {
+    border-color: var(--amber);
+    background: rgba(255, 179, 0, 0.08);
+  }
+  .radar-icon-box {
+    width: 38px;
+    height: 38px;
+    border-radius: 6px;
+    background: var(--amber-dim);
+    border: 1px solid var(--amber);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .radar-icon-box svg {
+    width: 20px;
+    height: 20px;
+    stroke: var(--amber);
+  }
+  .human-actions-row {
+    display: flex;
+    gap: 8px;
+  }
+  .btn-action-amber {
+    flex: 1;
+    background: var(--amber);
+    color: #1f1400;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 8px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn-action-amber:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-action-outline {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 11px;
+    padding: 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-action-outline:hover:not(:disabled) {
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+  .btn-action-outline:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* TAB 2: TELEMETRY & COCKPIT */
+  .cockpit-grid {
+    display: grid;
+    grid-template-columns: 340px 1fr 340px;
+    gap: 14px;
+  }
+  @media (max-width: 1200px) {
+    .cockpit-grid { grid-template-columns: 1fr; }
+  }
+
+  .virtual-feed {
+    background: #06090e;
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    height: 340px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .lidar-sweep-sim {
+    position: absolute;
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 242, 254, 0.25);
+  }
+  .lidar-sweep-sim::before {
+    content: "";
+    position: absolute;
+    inset: 20px;
+    border-radius: 50%;
+    border: 1px dashed rgba(0, 242, 254, 0.2);
+  }
+  .lidar-sweep-beam {
+    position: absolute;
+    width: 50%;
+    height: 50%;
+    top: 0; right: 0;
+    transform-origin: 0% 100%;
+    background: linear-gradient(45deg, rgba(0, 242, 254, 0.45), transparent 70%);
+    animation: radarSweep 3s linear infinite;
+  }
+  @keyframes radarSweep {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .feed-overlay-text {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--cyan);
+    text-shadow: 0 0 6px var(--cyan-glow);
+    z-index: 2;
+    line-height: 1.5;
+  }
+
+  .teleop-pad {
+    display: grid;
+    grid-template-columns: 60px 60px 60px;
+    grid-template-rows: 50px 50px 50px;
+    gap: 8px;
+    justify-content: center;
+    margin: 16px auto;
+  }
+  .jog-btn {
+    background: var(--bg-surface);
+    border: 1px solid var(--panel-border);
+    color: var(--text-primary);
+    border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .jog-btn:hover {
+    border-color: var(--cyan);
+    background: var(--cyan-dim);
+    color: var(--cyan);
+  }
+  .jog-btn:active {
+    transform: scale(0.92);
+    background: var(--cyan);
+    color: #000;
+  }
+
+  /* TAB 3: PERFORMANCE ANALYTICS */
+  .analytics-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .kpi-card {
+    background: rgba(17, 25, 38, 0.75);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::after {
+    content: "";
+    position: absolute;
+    top: 0; right: 0; width: 60px; height: 60px;
+    background: radial-gradient(circle, var(--kpi-glow, rgba(0, 242, 254, 0.08)) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .kpi-card .kpi-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .kpi-card .kpi-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .kpi-card .kpi-val small {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+  .kpi-delta {
+    font-size: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .kpi-delta.up { color: var(--emerald); }
+  .kpi-delta.down { color: var(--crimson); }
+
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  @media (max-width: 1024px) {
+    .charts-grid { grid-template-columns: 1fr; }
+  }
+  .chart-canvas-box {
+    width: 100%;
+    height: 250px;
+    position: relative;
+  }
+
+  /* TAB 4: HEALTH & MAINTENANCE */
+  .health-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  @media (max-width: 980px) {
+    .health-grid { grid-template-columns: 1fr; }
+  }
+
+  .subsystem-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11.5px;
+  }
+  .subsystem-table th {
+    text-align: left;
+    padding: 8px 10px;
+    font-size: 10px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--panel-border);
+    text-transform: uppercase;
+  }
+  .subsystem-table td {
+    padding: 10px;
+    border-bottom: 1px solid rgba(28, 43, 66, 0.5);
+    color: var(--text-primary);
+  }
+  .subsystem-table tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .fault-item-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--panel-border);
+    border-left: 3px solid var(--crimson);
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .fault-item-card.warn { border-left-color: var(--amber); }
+  .fault-item-card.info { border-left-color: var(--cyan); }
+  .fault-code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--crimson);
+  }
+  .fault-code.warn { color: var(--amber); }
+  .fault-desc {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+
+  /* TAB 5: AI HUMAN DETECTION & RADAR */
+  .radar-view-grid {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 14px;
+  }
+  @media (max-width: 1024px) {
+    .radar-view-grid { grid-template-columns: 1fr; }
+  }
+  .radar-hud-canvas {
+    width: 100%;
+    height: 520px;
+    background: #05080e;
+    border-radius: 6px;
+    border: 1px solid var(--panel-border);
+  }
+
+  /* TAB 6: V2X FLEET MESH & NETWORK */
+  .mesh-view-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 14px;
+  }
+  @media (max-width: 1024px) {
+    .mesh-view-grid { grid-template-columns: 1fr; }
+  }
+
+  .terminal-log {
+    background: #05080d;
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    padding: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    height: 380px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 6px;
+  }
+  .terminal-log::-webkit-scrollbar { width: 4px; }
+  .terminal-log::-webkit-scrollbar-thumb { background: var(--panel-border); }
+  .log-entry {
+    line-height: 1.45;
+  }
+  .log-entry .log-ts {
+    color: var(--text-muted);
+    margin-right: 8px;
+  }
+  .log-entry.v2x { color: var(--purple); }
+  .log-entry.warn { color: var(--amber); }
+  .log-entry.danger { color: var(--crimson); }
+  .log-entry.info { color: var(--cyan); }
+  .log-entry.sys { color: var(--emerald); }
+
+  .network-toggle-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px;
+    background: var(--bg-surface);
+    border: 1px solid var(--panel-border);
+    border-radius: 5px;
+    margin-bottom: 12px;
+  }
+
+  .switch-slider {
+    width: 46px;
+    height: 24px;
+    background: var(--emerald);
+    border-radius: 20px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.25s;
+    box-shadow: 0 0 10px var(--emerald-dim);
+  }
+  .switch-slider::after {
+    content: "";
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 18px; height: 18px;
+    background: #041410;
+    border-radius: 50%;
+    transition: left 0.25s;
+  }
+  .switch-slider.off {
+    background: #253346;
+    box-shadow: none;
+  }
+  .switch-slider.off::after {
+    left: 25px;
+    background: #070c14;
+  }
+
+  /* GLOBAL FOOTER */
+  footer {
+    text-align: center;
+    font-size: 10.5px;
+    color: var(--text-muted);
+    padding-top: 10px;
+  }
+
+  /* MODAL INSPECTOR FOR BOT */
+  .telemetry-drawer {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 380px;
+    background: rgba(17, 25, 38, 0.94);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--cyan);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 16px var(--cyan-dim);
+    border-radius: 6px;
+    padding: 14px;
+    z-index: 100;
+    display: none;
+    animation: drawerSlide 0.25s ease-out;
+  }
+  @keyframes drawerSlide {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .drawer-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--panel-border);
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+  }
+  .drawer-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: pointer;
+  }
+  .drawer-close:hover { color: var(--text-primary); }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- TOP HEADER HUD -->
+  <header>
+    <div class="brand-group">
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+          <polyline points="2 17 12 22 22 17"></polyline>
+          <polyline points="2 12 12 17 22 12"></polyline>
+        </svg>
+      </div>
+      <div class="brand-title">
+        <h1>FLEETDECK PRO</h1>
+        <p>Industrial Autonomous Mobile Robot (AMR) Operations & Digital Twin</p>
+      </div>
+    </div>
+
+    <!-- MAIN NAV TABS -->
+    <nav class="nav-tabs" id="main-nav">
+      <button class="nav-tab active" data-tab="tab-map">
+        <svg viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
+        Command Map
+      </button>
+      <button class="nav-tab" data-tab="tab-telemetry">
+        <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+        Cockpit &amp; Teleop
+      </button>
+      <button class="nav-tab" data-tab="tab-analytics">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        Performance
+      </button>
+      <button class="nav-tab" data-tab="tab-health">
+        <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+        Health &amp; Maintenance
+      </button>
+      <button class="nav-tab" data-tab="tab-human">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"></circle><path d="M5.5 21a8.5 8.5 0 0 1 13 0"></path></svg>
+        AI Human Radar
+      </button>
+      <button class="nav-tab" data-tab="tab-mesh">
+        <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+        V2X Mesh &amp; Net
+      </button>
+    </nav>
+
+    <!-- REAL-TIME TELEMETRY CHIPS -->
+    <div class="hud-stats-bar">
+      <div class="hud-stat">
+        <span class="hud-lbl">Fleet Online</span>
+        <span class="hud-val ok" id="top-bots-online"><span class="status-dot ok pulse"></span> 7 / 8 Active</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-lbl">Active Missions</span>
+        <span class="hud-val info" id="top-active-tasks">4</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-lbl">Safety Zone</span>
+        <span class="hud-val ok" id="top-safety-status">SECURE</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-lbl">Internet Uplink</span>
+        <span class="hud-val ok" id="top-network-status">CLOUD 5G</span>
+      </div>
+    </div>
+
+    <!-- HEADER CONTROLS -->
+    <div class="header-actions">
+      <button class="quick-btn" id="btn-audio-toggle" title="Toggle audio cues">
+        <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+        <span id="audio-label">Sound Off</span>
+      </button>
+      <div class="clock-display">
+        <div class="time mono" id="hud-clock">00:00:00</div>
+        <div class="date" id="hud-date">Live Shift</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- DYNAMIC SYSTEM NOTIFICATION BANNERS -->
+  <div class="system-banner estop" id="banner-estop">
+    <span>EMERGENCY STOP ENGAGED — ALL 8 FLEET UNITS HALTED IMMEDIATELY</span>
+    <button class="quick-btn" style="background:var(--crimson); color:#fff; border:none;" onclick="toggleEstop()">CLEAR &amp; RESUME</button>
+  </div>
+  <div class="system-banner offline" id="banner-offline">
+    <span>OFFLINE EDGE AUTONOMY ENGAGED — Cloud uplink severed. Fleet running localized dead-reckoning &amp; peer-to-peer V2X mesh.</span>
+    <span class="mono" id="buffer-packet-counter">Telemetry buffer: 0 packets</span>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- TAB 1: LIVE COMMAND MAP VIEW -->
+  <!-- ========================================================================= -->
+  <div class="tab-pane active" id="tab-map">
+    <div class="map-view-grid">
+
+      <!-- LEFT COLUMN: FLEET ROSTER -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>
+            <svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+            Active AMR Fleet
+          </h2>
+          <span class="panel-tag cyan" id="fleet-count-tag">8 Units</span>
+        </div>
+        <div class="panel-body">
+          <div class="fleet-filter-row">
+            <div class="filter-chip active" data-filter="all">All</div>
+            <div class="filter-chip" data-filter="moving">Moving</div>
+            <div class="filter-chip" data-filter="idle">Idle</div>
+            <div class="filter-chip" data-filter="charging">Charging</div>
+          </div>
+          <div class="fleet-scroll" id="fleet-card-container">
+            <!-- Dynamically populated AMR cards -->
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER COLUMN: INTERACTIVE DIGITAL TWIN MAP -->
+      <div class="map-wrapper" id="map-wrapper">
+        <!-- MAP CONTROLS OVERLAY -->
+        <div class="map-toolbar">
+          <div class="map-layers-group">
+            <button class="layer-toggle active" id="toggle-layer-lidar">LiDAR Halos</button>
+            <button class="layer-toggle active" id="toggle-layer-paths">Paths</button>
+            <button class="layer-toggle active" id="toggle-layer-mesh">V2X Links</button>
+            <button class="layer-toggle active" id="toggle-layer-zones">Zones</button>
+          </div>
+          <div class="map-zoom-group">
+            <button class="zoom-btn" id="btn-zoom-in" title="Zoom In">+</button>
+            <button class="zoom-btn" id="btn-zoom-out" title="Zoom Out">−</button>
+            <button class="zoom-btn" id="btn-zoom-reset" title="Reset View">⤢</button>
+          </div>
+        </div>
+
+        <!-- 2D DIGITAL TWIN CANVAS -->
+        <canvas id="warehouse-canvas" width="1000" height="620"></canvas>
+
+        <!-- MAP LEGEND & STATS -->
+        <div class="map-hud-legend">
+          <div class="legend-items">
+            <div class="legend-item"><span class="legend-color" style="background:var(--cyan)"></span> AMR Navigating</div>
+            <div class="legend-item"><span class="legend-color" style="background:var(--purple)"></span> Picking / Dropping</div>
+            <div class="legend-item"><span class="legend-color" style="background:var(--emerald)"></span> Charging Dock</div>
+            <div class="legend-item"><span class="legend-color" style="background:var(--amber)"></span> Human / Safety Zone</div>
+            <div class="legend-item"><span class="legend-color" style="background:var(--crimson)"></span> Restricted / Hazard</div>
+          </div>
+          <div class="mono" style="color:var(--text-muted);">Coordinate Engine: Kinematic 2D · Click bot to follow</div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: DISPATCH, E-STOP & CV HUMAN RADAR -->
+      <div class="col-right" style="display:flex; flex-direction:column; gap:14px;">
+
+        <!-- EMERGENCY STOP MASTER MODULE -->
+        <div class="estop-module">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Master Safety Interlock</span>
+            <span class="panel-tag crimson" id="estop-tag">ARMED</span>
+          </div>
+          <button class="estop-button" id="btn-estop-master" onclick="toggleEstop()">
+            HALT<br>FLEET
+          </button>
+          <p style="font-size:10.5px; color:var(--text-secondary); max-width:240px; margin:0 auto;" id="estop-desc">
+            Emergency kill-switch: cuts motor inverter power across all 8 AMR units instantly.
+          </p>
+        </div>
+
+        <!-- ROUTE DISPATCH CONTROLLER -->
+        <div class="dispatch-card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Mission Route Dispatch</span>
+            <span class="panel-tag cyan">Auto-Nav</span>
+          </div>
+          <div class="dispatch-grid">
+            <div class="field-group">
+              <label>Select AMR</label>
+              <select class="custom-select" id="dispatch-select-bot">
+                <option value="AMR-01">AMR-01 (Tote Carrier)</option>
+                <option value="AMR-02">AMR-02 (Pallet Lifter)</option>
+                <option value="AMR-03">AMR-03 (Roller Bed)</option>
+                <option value="AMR-04">AMR-04 (Forklift)</option>
+                <option value="AMR-05">AMR-05 (Heavy Tow)</option>
+                <option value="AMR-06">AMR-06 (Picker)</option>
+                <option value="AMR-07">AMR-07 (Tote Carrier)</option>
+                <option value="AMR-08">AMR-08 (Pallet Lifter)</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label>Target Destination</label>
+              <select class="custom-select" id="dispatch-select-target">
+                <option value="BAY_A">Aisle A (High-Rack)</option>
+                <option value="BAY_B">Aisle B (Fast-Pick)</option>
+                <option value="BAY_C">Aisle C (Pallet Rack)</option>
+                <option value="BAY_D">Aisle D (Cold Storage)</option>
+                <option value="DOCK_1">Dock 1 (Inbound Loading)</option>
+                <option value="DOCK_2">Dock 2 (Outbound Ship)</option>
+                <option value="PACK_1">Packing Station 1</option>
+                <option value="PACK_2">Packing Station 2</option>
+                <option value="CHARGER_1">Inductive Charger #1</option>
+                <option value="CHARGER_2">Inductive Charger #2</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn-dispatch" id="btn-trigger-dispatch" onclick="triggerDispatch()">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            Execute Mission Dispatch
+          </button>
+        </div>
+
+        <!-- AI HUMAN RADAR TARGET LOCK -->
+        <div class="panel human-radar-mini">
+          <div class="panel-head">
+            <h2>
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"></circle><path d="M5.5 21a8.5 8.5 0 0 1 13 0"></path></svg>
+              AI Human Safety &amp; Lock
+            </h2>
+            <span class="panel-tag amber" id="human-alert-chip">Detected: 1</span>
+          </div>
+          <div class="panel-body">
+            <div class="human-status-box" id="human-box-mini">
+              <div class="radar-icon-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a10 10 0 0 1 10 10"></path></svg>
+              </div>
+              <div style="flex:1;">
+                <div style="font-size:12px; font-weight:700;" id="human-target-name">Target: Operator in Aisle C</div>
+                <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;" id="human-target-details">Nearest: AMR-05 · Proximity: 3.8m</div>
+              </div>
+            </div>
+            <div class="human-actions-row" style="margin-top:10px;">
+              <button class="btn-action-amber" id="btn-target-lock" onclick="toggleTargetLock(true)">Lock Target &amp; Hold</button>
+              <button class="btn-action-outline" id="btn-target-release" onclick="toggleTargetLock(false)">Release Lock</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- TAB 2: FLEET TELEMETRY & COCKPIT -->
+  <!-- ========================================================================= -->
+  <div class="tab-pane" id="tab-telemetry">
+    <div class="cockpit-grid">
+
+      <!-- LEFT: BOT SELECTOR & SPECS -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Bot Specification</h2>
+          <span class="panel-tag cyan" id="cockpit-bot-tag">AMR-01</span>
+        </div>
+        <div class="panel-body" style="display:flex; flex-direction:column; gap:12px;">
+          <div class="field-group">
+            <label>Select Unit To Cockpit</label>
+            <select class="custom-select" id="cockpit-select-bot" onchange="selectCockpitBot(this.value)">
+              <option value="AMR-01">AMR-01 · Tote Carrier</option>
+              <option value="AMR-02">AMR-02 · Pallet Lifter</option>
+              <option value="AMR-03">AMR-03 · Roller Bed</option>
+              <option value="AMR-04">AMR-04 · High-Lift Fork</option>
+              <option value="AMR-05">AMR-05 · Heavy Tow Cart</option>
+              <option value="AMR-06">AMR-06 · Autonomous Picker</option>
+              <option value="AMR-07">AMR-07 · Tote Carrier</option>
+              <option value="AMR-08">AMR-08 · Pallet Lifter</option>
+            </select>
+          </div>
+
+          <div style="background:var(--bg-surface); padding:12px; border-radius:4px; border:1px solid var(--panel-border);">
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:11px;">
+              <span style="color:var(--text-muted)">ATTACHMENT</span>
+              <span class="mono" id="cp-attachment-name" style="font-weight:700;">Roller Bed MK-3</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:11px;">
+              <span style="color:var(--text-muted)">PAYLOAD WEIGHT</span>
+              <span class="mono" id="cp-payload-weight" style="color:var(--cyan);">142.5 kg / 500 kg</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:11px;">
+              <span style="color:var(--text-muted)">CLAMP / INTERLOCK</span>
+              <span class="panel-tag emerald" id="cp-lock-status">LOCKED &amp; SECURE</span>
+            </div>
+            <button class="quick-btn" style="width:100%; justify-content:center; margin-top:8px;" onclick="toggleSelectedAttachment()">
+              Toggle Attachment Actuator
+            </button>
+          </div>
+
+          <!-- GAUGES -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <div style="background:var(--bg-surface); border:1px solid var(--panel-border); border-radius:4px; padding:10px;">
+              <span style="font-size:9.5px; color:var(--text-muted); display:block;">LEFT TRACTION MOTOR</span>
+              <span class="mono" id="cp-motor-left" style="font-size:14px; font-weight:700; color:var(--emerald);">1,420 RPM · 38°C</span>
+            </div>
+            <div style="background:var(--bg-surface); border:1px solid var(--panel-border); border-radius:4px; padding:10px;">
+              <span style="font-size:9.5px; color:var(--text-muted); display:block;">RIGHT TRACTION MOTOR</span>
+              <span class="mono" id="cp-motor-right" style="font-size:14px; font-weight:700; color:var(--emerald);">1,418 RPM · 39°C</span>
+            </div>
+            <div style="background:var(--bg-surface); border:1px solid var(--panel-border); border-radius:4px; padding:10px;">
+              <span style="font-size:9.5px; color:var(--text-muted); display:block;">LiDAR OBSTACLE CLEARANCE</span>
+              <span class="mono" id="cp-lidar-dist" style="font-size:14px; font-weight:700; color:var(--cyan);">4.2 m Nominal</span>
+            </div>
+            <div style="background:var(--bg-surface); border:1px solid var(--panel-border); border-radius:4px; padding:10px;">
+              <span style="font-size:9.5px; color:var(--text-muted); display:block;">IMU GYRO DRIFT</span>
+              <span class="mono" id="cp-imu-drift" style="font-size:14px; font-weight:700; color:var(--emerald);">0.02° / min</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER: VIRTUAL LIDAR RADAR & CAMERA SIMULATION -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Sensor Visualizer &amp; Live Perception Feed</h2>
+          <span class="panel-tag cyan">20 Hz Stream</span>
+        </div>
+        <div class="panel-body">
+          <div class="virtual-feed">
+            <div class="feed-overlay-text">
+              <div id="cam-overlay-bot">STREAM: AMR-01 [CAMERA_FRONT_STEREO]</div>
+              <div>FOV: 120° · DEPTH: ACTIVE · RESOLUTION: 1080p@60</div>
+              <div id="cam-overlay-kin">SPEED: 1.4 m/s · HEADING: 92.4° · STEER: 0.0°</div>
+            </div>
+            <div class="lidar-sweep-sim">
+              <div class="lidar-sweep-beam"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: MANUAL TELEOP CONTROLLER -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Manual Teleoperation (WASD)</h2>
+          <span class="panel-tag amber">Operator Override</span>
+        </div>
+        <div class="panel-body" style="text-align:center;">
+          <p style="font-size:11px; color:var(--text-secondary); margin-bottom:12px;">
+            Take manual control of the selected bot. Overrides automated dispatch safely.
+          </p>
+
+          <div class="teleop-pad">
+            <div></div>
+            <button class="jog-btn" onclick="teleopJog('up')">▲<br><small>W</small></button>
+            <div></div>
+
+            <button class="jog-btn" onclick="teleopJog('left')">◀<br><small>A</small></button>
+            <button class="jog-btn" onclick="teleopJog('stop')" style="color:var(--crimson);">■<br><small>STOP</small></button>
+            <button class="jog-btn" onclick="teleopJog('right')">▶<br><small>D</small></button>
+
+            <div></div>
+            <button class="jog-btn" onclick="teleopJog('down')">▼<br><small>S</small></button>
+            <div></div>
+          </div>
+
+          <div style="margin-top:14px; display:flex; gap:8px;">
+            <button class="quick-btn" style="flex:1; justify-content:center;" onclick="teleopJog('dock')">Auto-Dock to Charger</button>
+            <button class="quick-btn" style="flex:1; justify-content:center;" onclick="teleopJog('resume')">Resume Mission</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- TAB 3: PERFORMANCE ANALYTICS -->
+  <!-- ========================================================================= -->
+  <div class="tab-pane" id="tab-analytics">
+    <div class="analytics-kpi-row">
+      <div class="kpi-card" style="--kpi-glow: rgba(0, 242, 254, 0.12);">
+        <span class="kpi-label">Tasks Completed (Shift)</span>
+        <div class="kpi-val" id="kpi-tasks-done">128 <small>orders</small></div>
+        <div class="kpi-delta up">▲ +14% vs last shift target</div>
+      </div>
+      <div class="kpi-card" style="--kpi-glow: rgba(0, 230, 118, 0.12);">
+        <span class="kpi-label">Total Distance Traveled</span>
+        <div class="kpi-val" id="kpi-distance-km">42.85 <small>km</small></div>
+        <div class="kpi-delta up">▲ Fleet odometer active</div>
+      </div>
+      <div class="kpi-card" style="--kpi-glow: rgba(168, 85, 247, 0.12);">
+        <span class="kpi-label">Fleet Battery Utilization</span>
+        <div class="kpi-val" id="kpi-battery-avg">78.4 <small>%</small></div>
+        <div class="kpi-delta down">▼ 0.8% / hr nominal drain</div>
+      </div>
+      <div class="kpi-card" style="--kpi-glow: rgba(255, 179, 0, 0.12);">
+        <span class="kpi-label">Overall Equipment Effectiveness (OEE)</span>
+        <div class="kpi-val" id="kpi-oee-rate">94.6 <small>%</small></div>
+        <div class="kpi-delta up">▲ High fleet availability</div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <!-- REAL-TIME BATTERY DISCHARGE GRAPH -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Fleet Battery Discharge Trends (Time-Series)</h2>
+          <span class="panel-tag cyan">Live Dynamic Canvas</span>
+        </div>
+        <div class="panel-body">
+          <div class="chart-canvas-box">
+            <canvas id="chart-battery" width="700" height="250"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOT DISTANCE COMPARISON BAR CHART -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Distance Traveled By Bot (km)</h2>
+          <span class="panel-tag emerald">Shift Log</span>
+        </div>
+        <div class="panel-body">
+          <div class="chart-canvas-box">
+            <canvas id="chart-distance" width="350" height="250"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MISSION LOGS & THROUGHPUT ROW -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Hourly Mission Throughput &amp; Cycle Times</h2>
+        <span class="panel-tag purple">Real-Time Aggregates</span>
+      </div>
+      <div class="panel-body">
+        <div class="chart-canvas-box" style="height:180px;">
+          <canvas id="chart-throughput" width="1000" height="180"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- TAB 4: HEALTH MONITORING & FAULT MAINTENANCE -->
+  <!-- ========================================================================= -->
+  <div class="tab-pane" id="tab-health">
+    <div class="health-grid">
+
+      <!-- FLEET HARDWARE SUBSYSTEM MATRIX -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Subsystem Telemetry Health Matrix</h2>
+          <span class="panel-tag emerald">8 Units Scanned</span>
+        </div>
+        <div class="panel-body" style="padding:0;">
+          <table class="subsystem-table" id="table-subsystems">
+            <thead>
+              <tr>
+                <th>Bot ID</th>
+                <th>Motor Drive</th>
+                <th>LiDAR / Vision</th>
+                <th>BMS Battery</th>
+                <th>Thermal</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="subsystem-tbody">
+              <!-- Dynamically rendered -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- FAULT DETECTION & MAINTENANCE TICKETS -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Fault Detection &amp; Diagnostic Trouble Codes (DTC)</h2>
+          <button class="quick-btn" onclick="injectTestFault()">+ Inject Test Fault</button>
+        </div>
+        <div class="panel-body">
+          <div id="fault-cards-list">
+            <!-- Dynamically populated faults -->
+          </div>
+
+          <div style="margin-top:16px; border-top:1px solid var(--panel-border); padding-top:12px;">
+            <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; display:block; margin-bottom:8px;">
+              Scheduled Maintenance &amp; Calibration
+            </span>
+            <div class="fault-item-card info">
+              <div>
+                <div class="fault-code" style="color:var(--cyan);">SVC-304 · LiDAR Alignment Calibration</div>
+                <div class="fault-desc">AMR-03 scheduled for optical recalibration in 4 days.</div>
+              </div>
+              <button class="quick-btn" onclick="calibrateSensor('AMR-03')">Run Calibration</button>
+            </div>
+            <div class="fault-item-card info">
+              <div>
+                <div class="fault-code" style="color:var(--cyan);">BMS-102 · Cell Conditioning Balance</div>
+                <div class="fault-desc">AMR-06 deep-cycle conditioning scheduled for next idle window.</div>
+              </div>
+              <button class="quick-btn" onclick="calibrateSensor('AMR-06')">Start Conditioning</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- TAB 5: AI HUMAN DETECTION & RADAR -->
+  <!-- ========================================================================= -->
+  <div class="tab-pane" id="tab-human">
+    <div class="radar-view-grid">
+
+      <!-- AI RADAR SCREEN -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Warehouse Pedestrian &amp; Human Detection Radar</h2>
+          <span class="panel-tag amber">AI Thermal + 3D LiDAR</span>
+        </div>
+        <div class="panel-body" style="padding:10px;">
+          <canvas id="canvas-human-radar" class="radar-hud-canvas" width="800" height="500"></canvas>
+        </div>
+      </div>
+
+      <!-- TARGET LOCK & TRACKING CONTROLLER -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Target Lock &amp; Safety Zone Parameters</h2>
+          <span class="panel-tag cyan">ISO 3691-4</span>
+        </div>
+        <div class="panel-body" style="display:flex; flex-direction:column; gap:14px;">
+          <div class="human-status-box locked" id="radar-target-card">
+            <div class="radar-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="7" r="4"></circle><path d="M5.5 21a8.5 8.5 0 0 1 13 0"></path></svg>
+            </div>
+            <div>
+              <div style="font-size:13px; font-weight:700;" id="radar-target-id">HUMAN-01 · Authorized Operator</div>
+              <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;" id="radar-target-coords">Location: X: 310, Y: 260 · Speed: 0.8 m/s</div>
+              <div style="font-size:10px; color:var(--amber); font-weight:600; margin-top:4px;" id="radar-target-conf">Confidence: 98.6% · Bounding Box Active</div>
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <button class="btn-action-amber" style="padding:10px;" onclick="toggleTargetLock(true)">
+              ENGAGE TARGET LOCK (HALT SURROUNDING BOTS)
+            </button>
+            <button class="btn-action-outline" style="padding:10px;" onclick="toggleTargetLock(false)">
+              RELEASE TARGET LOCK (RESUME MISSIONS)
+            </button>
+          </div>
+
+          <div style="border-top:1px solid var(--panel-border); padding-top:12px;">
+            <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; display:block; margin-bottom:10px;">
+              Simulate Pedestrian Movement
+            </span>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+              <button class="quick-btn" onclick="relocateHuman('BAY_A')">Move to Aisle A</button>
+              <button class="quick-btn" onclick="relocateHuman('BAY_C')">Move to Aisle C</button>
+              <button class="quick-btn" onclick="relocateHuman('DOCK_1')">Move to Dock 1</button>
+              <button class="quick-btn" onclick="relocateHuman('PACK_1')">Move to Packing</button>
+            </div>
+          </div>
+
+          <div style="border-top:1px solid var(--panel-border); padding-top:12px; font-size:10.5px; color:var(--text-secondary); line-height:1.5;">
+            Dynamic safety buffer automatically calculates stopping distances based on AMR velocity (1.5 m/s) and payload mass.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- TAB 6: V2X FLEET MESH & NETWORK SIMULATOR -->
+  <!-- ========================================================================= -->
+  <div class="tab-pane" id="tab-mesh">
+    <div class="mesh-view-grid">
+
+      <!-- V2X REAL-TIME MESSAGE STREAM & LOG -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Peer-to-Peer Inter-Bot V2X Message Bus</h2>
+          <span class="panel-tag purple">802.11p / 5G URLLC</span>
+        </div>
+        <div class="panel-body">
+          <div class="terminal-log" id="v2x-terminal">
+            <!-- Messages inserted dynamically -->
+          </div>
+
+          <!-- OPERATOR BROADCAST LINE -->
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <input type="text" class="custom-input" id="v2x-broadcast-input" placeholder="Enter broadcast packet (e.g. SLOW_ZONE_50, CLEAR_AISLE)...">
+            <button class="btn-dispatch" style="padding:7px 18px;" onclick="sendBroadcastV2X()">Send</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- INTERNET ON/OFF SIMULATOR & MESH TOPOLOGY -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Network Uplink Controller</h2>
+          <span class="panel-tag emerald" id="mesh-status-tag">Connected</span>
+        </div>
+        <div class="panel-body" style="display:flex; flex-direction:column; gap:12px;">
+
+          <!-- INTERNET TOGGLE SWITCH -->
+          <div class="network-toggle-card">
+            <div>
+              <div style="font-size:13px; font-weight:700;">Cloud WAN Uplink</div>
+              <div style="font-size:10.5px; color:var(--text-secondary);" id="wan-status-sub">Toggle Cloud internet on/off</div>
+            </div>
+            <div class="switch-slider" id="switch-wan" onclick="toggleInternet()"></div>
+          </div>
+
+          <!-- TELEMETRY METRICS -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+            <div style="background:var(--bg-surface); padding:10px; border-radius:4px; border:1px solid var(--panel-border);">
+              <span style="font-size:9.5px; color:var(--text-muted); display:block;">LATENCY (RTT)</span>
+              <span class="mono" id="net-metric-rtt" style="font-size:16px; font-weight:700; color:var(--emerald);">11 ms</span>
+            </div>
+            <div style="background:var(--bg-surface); padding:10px; border-radius:4px; border:1px solid var(--panel-border);">
+              <span style="font-size:9.5px; color:var(--text-muted); display:block;">PEER LINKS ACTIVE</span>
+              <span class="mono" id="net-metric-links" style="font-size:16px; font-weight:700; color:var(--purple);">14 links</span>
+            </div>
+            <div style="background:var(--bg-surface); padding:10px; border-radius:4px; border:1px solid var(--panel-border);">
+              <span style="font-size:9.5px; color:var(--text-muted); display:block;">PACKET LOSS</span>
+              <span class="mono" id="net-metric-loss" style="font-size:16px; font-weight:700; color:var(--emerald);">0.00%</span>
+            </div>
+            <div style="background:var(--bg-surface); padding:10px; border-radius:4px; border:1px solid var(--panel-border);">
+              <span style="font-size:9.5px; color:var(--text-muted); display:block;">BUFFERED QUEUE</span>
+              <span class="mono" id="net-metric-queue" style="font-size:16px; font-weight:700; color:var(--cyan);">0 msgs</span>
+            </div>
+          </div>
+
+          <div style="background:rgba(0,0,0,0.3); border-radius:4px; padding:10px; font-size:11px; color:var(--text-secondary); line-height:1.5;">
+            <b>Decentralized Mesh Protocol:</b> When the Internet WAN is toggled OFF, bots maintain immediate peer-to-peer collision avoidance and priority negotiation via local 5.9 GHz V2X radio.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FLOATING TELEMETRY INSPECTOR DRAWER -->
+  <div class="telemetry-drawer" id="telemetry-drawer">
+    <div class="drawer-head">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="status-dot ok"></span>
+        <span class="mono" id="drawer-bot-title" style="font-size:13px; font-weight:700;">AMR-01 Telemetry</span>
+      </div>
+      <button class="drawer-close" onclick="closeDrawer()">✕</button>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:11px;">
+      <div><span style="color:var(--text-muted)">State:</span> <span class="mono" id="drawer-state">NAVIGATING</span></div>
+      <div><span style="color:var(--text-muted)">Battery:</span> <span class="mono" id="drawer-battery">88%</span></div>
+      <div><span style="color:var(--text-muted)">Speed:</span> <span class="mono" id="drawer-speed">1.2 m/s</span></div>
+      <div><span style="color:var(--text-muted)">Heading:</span> <span class="mono" id="drawer-heading">45°</span></div>
+      <div><span style="color:var(--text-muted)">Coordinates:</span> <span class="mono" id="drawer-coords">X: 120, Y: 240</span></div>
+      <div><span style="color:var(--text-muted)">Payload:</span> <span class="mono" id="drawer-payload">Tote (45kg)</span></div>
+    </div>
+    <div style="margin-top:10px; display:flex; gap:6px;">
+      <button class="quick-btn" style="flex:1; justify-content:center;" onclick="focusBotInCockpit()">Open Cockpit</button>
+      <button class="quick-btn" style="flex:1; justify-content:center;" onclick="drawerDispatch()">New Mission</button>
+    </div>
+  </div>
+
+  <footer>
+    FLEETDECK PRO INDUSTRIAL DIGITAL TWIN · WAREHOUSE AUTONOMY &amp; V2X FLEET CONTROL SYSTEM · OPERATIONAL
+  </footer>
+
+</div>
+
+<!-- ========================================================================= -->
+<!-- JAVASCRIPT MASTER SIMULATION ENGINE -->
+<!-- ========================================================================= -->
+<script>
+(function(){
+  'use strict';
+
+  // Audio synthesizer via Web Audio API (optional audible cues)
+  let audioCtx = null;
+  let audioEnabled = false;
+  function playBeep(freq = 600, type = 'sine', duration = 0.08) {
+    if (!audioEnabled) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    } catch(e){}
+  }
+
+  // Master Application State
+  const state = {
+    estop: false,
+    internetOn: true,
+    targetLock: false,
+    selectedBotId: 'AMR-01',
+    bufferedPackets: 0,
+    filter: 'all',
+    layers: { lidar: true, paths: true, mesh: true, zones: true },
+    zoom: 1,
+    panX: 0,
+    panY: 0
+  };
+
+  // Warehouse Navigation Waypoints & Targets
+  const waypoints = {
+    BAY_A: { x: 120, y: 140, name: 'Aisle A (High-Rack)' },
+    BAY_B: { x: 260, y: 140, name: 'Aisle B (Fast-Pick)' },
+    BAY_C: { x: 400, y: 140, name: 'Aisle C (Pallet Rack)' },
+    BAY_D: { x: 120, y: 380, name: 'Aisle D (Cold Storage)' },
+    BAY_E: { x: 260, y: 380, name: 'Aisle E (Overflow)' },
+    BAY_F: { x: 400, y: 380, name: 'Aisle F (Bulk Rack)' },
+    DOCK_1: { x: 780, y: 130, name: 'Dock 1 (Inbound)' },
+    DOCK_2: { x: 780, y: 250, name: 'Dock 2 (Outbound)' },
+    PACK_1: { x: 620, y: 140, name: 'Pack Station 1' },
+    PACK_2: { x: 620, y: 380, name: 'Pack Station 2' },
+    CHARGER_1: { x: 620, y: 490, name: 'Inductive Charger #1' },
+    CHARGER_2: { x: 760, y: 490, name: 'Inductive Charger #2' },
+    RESTRICTED_ZONE: { x: 500, y: 260, w: 90, h: 70 }
+  };
+
+  // 8 Active Autonomous Mobile Robots (AMRs)
+  const bots = {
+    'AMR-01': {
+      id: 'AMR-01', type: 'Tote Carrier', state: 'navigating',
+      x: 120, y: 140, targetX: 620, targetY: 140, heading: 0, speed: 1.35,
+      battery: 89, distanceKm: 8.42, tasksCompleted: 19,
+      attachment: { type: 'Roller Bed MK-3', locked: true, payloadKg: 42, payloadName: 'Tote #T-902' },
+      subsystems: { motor: 'NOMINAL', lidar: 'NOMINAL', bms: 'NOMINAL', temp: 37 },
+      path: [[120,140], [260,140], [400,140], [620,140], [620,260], [400,260], [120,260], [120,140]],
+      pathIndex: 0
+    },
+    'AMR-02': {
+      id: 'AMR-02', type: 'Pallet Lifter', state: 'navigating',
+      x: 400, y: 380, targetX: 780, targetY: 250, heading: 90, speed: 1.2,
+      battery: 76, distanceKm: 6.94, tasksCompleted: 14,
+      attachment: { type: 'Hydraulic Fork', locked: true, payloadKg: 480, payloadName: 'Pallet #P-104' },
+      subsystems: { motor: 'NOMINAL', lidar: 'NOMINAL', bms: 'NOMINAL', temp: 39 },
+      path: [[400,380], [620,380], [780,380], [780,250], [620,250], [400,250], [400,380]],
+      pathIndex: 0
+    },
+    'AMR-03': {
+      id: 'AMR-03', type: 'Roller Bed', state: 'navigating',
+      x: 260, y: 140, targetX: 120, targetY: 380, heading: 180, speed: 1.1,
+      battery: 64, distanceKm: 5.71, tasksCompleted: 12,
+      attachment: { type: 'Belt Conveyor', locked: true, payloadKg: 85, payloadName: 'Cartons (x4)' },
+      subsystems: { motor: 'NOMINAL', lidar: 'WARNING', bms: 'NOMINAL', temp: 41 },
+      path: [[260,140], [260,260], [120,260], [120,380], [260,380], [260,140]],
+      pathIndex: 0
+    },
+    'AMR-04': {
+      id: 'AMR-04', type: 'High-Lift Fork', state: 'picking',
+      x: 120, y: 380, targetX: 120, targetY: 380, heading: 0, speed: 0,
+      battery: 58, distanceKm: 4.88, tasksCompleted: 11,
+      attachment: { type: 'High Mast Fork', locked: true, payloadKg: 320, payloadName: 'Crate #C-44' },
+      subsystems: { motor: 'NOMINAL', lidar: 'NOMINAL', bms: 'NOMINAL', temp: 36 },
+      path: [], pathIndex: 0
+    },
+    'AMR-05': {
+      id: 'AMR-05', type: 'Heavy Tow Cart', state: 'navigating',
+      x: 260, y: 380, targetX: 620, targetY: 380, heading: 0, speed: 1.0,
+      battery: 71, distanceKm: 7.15, tasksCompleted: 16,
+      attachment: { type: 'Tow Hitch Interlock', locked: true, payloadKg: 750, payloadName: 'Bulk Trailer' },
+      subsystems: { motor: 'NOMINAL', lidar: 'NOMINAL', bms: 'NOMINAL', temp: 43 },
+      path: [[260,380], [400,380], [620,380], [620,260], [260,260], [260,380]],
+      pathIndex: 0
+    },
+    'AMR-06': {
+      id: 'AMR-06', type: 'Autonomous Picker', state: 'charging',
+      x: 620, y: 490, targetX: 620, targetY: 490, heading: 270, speed: 0,
+      battery: 32, distanceKm: 3.90, tasksCompleted: 8,
+      attachment: { type: 'Delta Robotic Arm', locked: true, payloadKg: 0, payloadName: 'Empty' },
+      subsystems: { motor: 'NOMINAL', lidar: 'NOMINAL', bms: 'NOMINAL', temp: 34 },
+      path: [], pathIndex: 0
+    },
+    'AMR-07': {
+      id: 'AMR-07', type: 'Tote Carrier', state: 'navigating',
+      x: 780, y: 130, targetX: 620, targetY: 140, heading: 180, speed: 1.4,
+      battery: 82, distanceKm: 6.22, tasksCompleted: 15,
+      attachment: { type: 'Roller Bed MK-3', locked: true, payloadKg: 35, payloadName: 'Tote #T-108' },
+      subsystems: { motor: 'NOMINAL', lidar: 'NOMINAL', bms: 'NOMINAL', temp: 38 },
+      path: [[780,130], [620,140], [620,260], [780,250], [780,130]],
+      pathIndex: 0
+    },
+    'AMR-08': {
+      id: 'AMR-08', type: 'Pallet Lifter', state: 'idle',
+      x: 760, y: 490, targetX: 760, targetY: 490, heading: 90, speed: 0,
+      battery: 98, distanceKm: 2.45, tasksCompleted: 5,
+      attachment: { type: 'Hydraulic Fork', locked: true, payloadKg: 0, payloadName: 'Empty' },
+      subsystems: { motor: 'NOMINAL', lidar: 'NOMINAL', bms: 'NOMINAL', temp: 31 },
+      path: [], pathIndex: 0
+    }
+  };
+
+  // Pedestrian Human Worker Simulation
+  const human = {
+    id: 'HUMAN-01',
+    name: 'Operator in Aisle C',
+    x: 400, y: 260,
+    targetX: 400, targetY: 260,
+    radius: 40,
+    confidence: 98.4
+  };
+
+  // Faults List
+  let faults = [
+    { id: 'FLT-101', botId: 'AMR-03', code: 'DTC-S108', desc: 'LiDAR optical variance warning — slight window occlusion', sev: 'warn' }
+  ];
+
+  // Battery history for real-time chart
+  const batteryHistory = [];
+  for (let i = 0; i < 20; i++) {
+    batteryHistory.push(80 + Math.sin(i * 0.4) * 5);
+  }
+
+  // Throughput bar history
+  const hourlyThroughput = [14, 19, 22, 18, 25, 29, 21, 28];
+
+  // =========================================================================
+  // NAVIGATION & TAB SWITCHING
+  // =========================================================================
+  const navTabs = document.querySelectorAll('.nav-tab');
+  const tabPanes = document.querySelectorAll('.tab-pane');
+
+  navTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+      navTabs.forEach(t => t.classList.remove('active'));
+      tabPanes.forEach(p => p.classList.remove('active'));
+
+      tab.classList.add('active');
+      const pane = document.getElementById(target);
+      if (pane) pane.classList.add('active');
+      playBeep(700, 'sine', 0.05);
+
+      // Trigger re-render of canvas charts when opening analytics tab
+      if (target === 'tab-analytics') {
+        renderBatteryChart();
+        renderDistanceChart();
+        renderThroughputChart();
+      }
+      if (target === 'tab-human') {
+        renderRadarCanvas();
+      }
+    });
+  });
+
+  // Filter chips
+  document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.filter = chip.dataset.filter;
+      renderFleetList();
+      playBeep(650, 'sine', 0.04);
+    });
+  });
+
+  // Layer toggles
+  const layerMap = {
+    'toggle-layer-lidar': 'lidar',
+    'toggle-layer-paths': 'paths',
+    'toggle-layer-mesh': 'mesh',
+    'toggle-layer-zones': 'zones'
+  };
+  Object.keys(layerMap).forEach(btnId => {
+    const btn = document.getElementById(btnId);
+    if (btn) {
+      btn.addEventListener('click', () => {
+        const prop = layerMap[btnId];
+        state.layers[prop] = !state.layers[prop];
+        btn.classList.toggle('active', state.layers[prop]);
+        playBeep(800, 'sine', 0.04);
+      });
+    }
+  });
+
+  // Zoom buttons
+  document.getElementById('btn-zoom-in').addEventListener('click', () => { state.zoom = Math.min(state.zoom + 0.15, 2.0); });
+  document.getElementById('btn-zoom-out').addEventListener('click', () => { state.zoom = Math.max(state.zoom - 0.15, 0.7); });
+  document.getElementById('btn-zoom-reset').addEventListener('click', () => { state.zoom = 1; state.panX = 0; state.panY = 0; });
+
+  // Audio Toggle
+  const btnAudio = document.getElementById('btn-audio-toggle');
+  btnAudio.addEventListener('click', () => {
+    audioEnabled = !audioEnabled;
+    btnAudio.classList.toggle('active', audioEnabled);
+    document.getElementById('audio-label').textContent = audioEnabled ? 'Sound On' : 'Sound Off';
+    if (audioEnabled) playBeep(880, 'sine', 0.1);
+  });
+
+  // =========================================================================
+  // EMERGENCY STOP (E-STOP) TOGGLE
+  // =========================================================================
+  window.toggleEstop = function() {
+    state.estop = !state.estop;
+    const banner = document.getElementById('banner-estop');
+    const masterBtn = document.getElementById('btn-estop-master');
+    const mapWrap = document.getElementById('map-wrapper');
+    const estopTag = document.getElementById('estop-tag');
+    const estopDesc = document.getElementById('estop-desc');
+
+    if (state.estop) {
+      banner.classList.add('show');
+      mapWrap.classList.add('halted');
+      masterBtn.classList.add('resumed');
+      masterBtn.innerHTML = 'RESUME<br>FLEET';
+      estopTag.textContent = 'TRIPPED';
+      estopTag.className = 'panel-tag crimson';
+      estopDesc.textContent = 'SAFETY HALT ACTIVE: Drive motors powered down. Push Resume when clear.';
+      logV2X('CRITICAL: Emergency Stop initiated by Master Interlock. All AMRs held.');
+      playBeep(320, 'square', 0.25);
+    } else {
+      banner.classList.remove('show');
+      mapWrap.classList.remove('halted');
+      masterBtn.classList.remove('resumed');
+      masterBtn.innerHTML = 'HALT<br>FLEET';
+      estopTag.textContent = 'ARMED';
+      estopTag.className = 'panel-tag emerald';
+      estopDesc.textContent = 'Emergency kill-switch: cuts motor inverter power across all 8 AMR units instantly.';
+      logV2X('NOTICE: Emergency Stop cleared. Fleet resuming autonomous operations.');
+      playBeep(880, 'triangle', 0.15);
+    }
+    renderFleetList();
+  };
+
+  // =========================================================================
+  // INTERNET ON/OFF (DECENTRALIZED MESH SIMULATION)
+  // =========================================================================
+  window.toggleInternet = function() {
+    state.internetOn = !state.internetOn;
+    const slider = document.getElementById('switch-wan');
+    const bannerOffline = document.getElementById('banner-offline');
+    const wanStatusSub = document.getElementById('wan-status-sub');
+    const topNet = document.getElementById('top-network-status');
+    const meshTag = document.getElementById('mesh-status-tag');
+    const rttEl = document.getElementById('net-metric-rtt');
+    const lossEl = document.getElementById('net-metric-loss');
+
+    slider.classList.toggle('off', !state.internetOn);
+
+    if (state.internetOn) {
+      bannerOffline.classList.remove('show');
+      wanStatusSub.textContent = 'Cloud WAN 5G connected (sub-15ms)';
+      topNet.textContent = 'CLOUD 5G';
+      topNet.className = 'hud-val ok';
+      meshTag.textContent = 'Connected';
+      meshTag.className = 'panel-tag emerald';
+      rttEl.textContent = '11 ms';
+      rttEl.style.color = 'var(--emerald)';
+      lossEl.textContent = '0.00%';
+      logV2X(`SYSTEM: Cloud uplink restored. Flushed ${state.bufferedPackets} buffered telemetry packets.`);
+      state.bufferedPackets = 0;
+      playBeep(920, 'sine', 0.12);
+    } else {
+      bannerOffline.classList.add('show');
+      wanStatusSub.textContent = 'OFFLINE EDGE MODE: Local peer-to-peer V2X only';
+      topNet.textContent = 'OFFLINE (V2X)';
+      topNet.className = 'hud-val warn';
+      meshTag.textContent = 'Local Mesh';
+      meshTag.className = 'panel-tag amber';
+      rttEl.textContent = '∞ ms';
+      rttEl.style.color = 'var(--amber)';
+      lossEl.textContent = '0.04% (Local)';
+      logV2X('WARNING: Cloud uplink severed. Fleet switched to decentralized dead-reckoning mesh.');
+      playBeep(440, 'sawtooth', 0.18);
+    }
+  };
+
+  // =========================================================================
+  // TARGET LOCK & RELEASE (AI HUMAN DETECTION)
+  // =========================================================================
+  window.toggleTargetLock = function(locked) {
+    state.targetLock = locked;
+    const topSafety = document.getElementById('top-safety-status');
+    const humanBoxMini = document.getElementById('human-box-mini');
+    const radarCard = document.getElementById('radar-target-card');
+    const alertChip = document.getElementById('human-alert-chip');
+
+    if (locked) {
+      topSafety.textContent = 'TARGET LOCKED';
+      topSafety.className = 'hud-val warn';
+      humanBoxMini.classList.add('locked');
+      radarCard.classList.add('locked');
+      alertChip.textContent = 'LOCKED · HOLD';
+      alertChip.className = 'panel-tag crimson';
+
+      // Put nearby bots in safety hold
+      Object.values(bots).forEach(b => {
+        const d = Math.hypot(b.x - human.x, b.y - human.y);
+        if (d < 180 && b.state !== 'charging') {
+          b.prevState = b.state;
+          b.state = 'safety_hold';
+          logV2X(`[COLLISION-AVOID] ${b.id} held for pedestrian safety buffer around ${human.name}.`);
+        }
+      });
+      playBeep(520, 'square', 0.15);
+    } else {
+      topSafety.textContent = 'SECURE';
+      topSafety.className = 'hud-val ok';
+      humanBoxMini.classList.remove('locked');
+      radarCard.classList.remove('locked');
+      alertChip.textContent = 'Detected: 1';
+      alertChip.className = 'panel-tag amber';
+
+      // Resume held bots
+      Object.values(bots).forEach(b => {
+        if (b.state === 'safety_hold') {
+          b.state = b.prevState || 'navigating';
+        }
+      });
+      logV2X(`[SAFETY-CLEAR] Target lock released. Safety envelope verified clear.`);
+      playBeep(780, 'sine', 0.1);
+    }
+    renderFleetList();
+  };
+
+  window.relocateHuman = function(waypointKey) {
+    const wp = waypoints[waypointKey];
+    if (wp) {
+      human.x = wp.x;
+      human.y = wp.y;
+      human.name = `Operator in ${wp.name}`;
+      document.getElementById('human-target-name').textContent = `Target: ${human.name}`;
+      document.getElementById('radar-target-coords').textContent = `Location: X: ${wp.x}, Y: ${wp.y} · Speed: 0.9 m/s`;
+      logV2X(`AI-VISION: Pedestrian tracking updated to ${wp.name}. Re-evaluating AMR proximity zones.`);
+      playBeep(640, 'sine', 0.06);
+
+      if (state.targetLock) {
+        toggleTargetLock(true);
+      }
+    }
+  };
+
+  // =========================================================================
+  // FLEET ROSTER RENDERING
+  // =========================================================================
+  const fleetContainer = document.getElementById('fleet-card-container');
+
+  function renderFleetList() {
+    fleetContainer.innerHTML = '';
+    const filteredIds = Object.keys(bots).filter(id => {
+      const b = bots[id];
+      if (state.filter === 'moving') return b.state === 'navigating';
+      if (state.filter === 'idle') return b.state === 'idle';
+      if (state.filter === 'charging') return b.state === 'charging';
+      return true;
+    });
+
+    filteredIds.forEach(id => {
+      const b = bots[id];
+      const card = document.createElement('div');
+      card.className = `bot-card ${state.selectedBotId === id ? 'selected' : ''}`;
+      card.onclick = () => selectBot(id);
+
+      let badgeClass = b.state;
+      let displayState = b.state.replace('_', ' ');
+      if (state.estop) {
+        badgeClass = 'fault';
+        displayState = 'E-STOP HALT';
+      }
+
+      const battLevel = b.battery > 60 ? '' : b.battery > 30 ? 'med' : 'low';
+
+      card.innerHTML = `
+        <div class="bot-header">
+          <div class="bot-id-title">
+            <span class="bot-id mono">${b.id}</span>
+            <span class="bot-model">${b.type}</span>
+          </div>
+          <span class="state-badge ${badgeClass}">${displayState}</span>
+        </div>
+        <div class="bot-meta-grid">
+          <div class="bot-meta-item"><span class="lbl">BATTERY</span><span class="val mono">${b.battery.toFixed(0)}%</span></div>
+          <div class="bot-meta-item"><span class="lbl">DISTANCE</span><span class="val mono">${b.distanceKm.toFixed(1)} km</span></div>
+          <div class="bot-meta-item"><span class="lbl">PAYLOAD</span><span class="val mono">${b.attachment.payloadKg} kg</span></div>
+        </div>
+        <div class="bot-battery-bar">
+          <div class="bot-battery-fill ${battLevel}" style="width:${b.battery}%"></div>
+        </div>
+      `;
+      fleetContainer.appendChild(card);
+    });
+
+    document.getElementById('fleet-count-tag').textContent = `${Object.keys(bots).length} Units`;
+  }
+
+  function selectBot(id) {
+    state.selectedBotId = id;
+    renderFleetList();
+    updateCockpitUI();
+    openDrawerForBot(id);
+    playBeep(740, 'sine', 0.04);
+  }
+
+  // =========================================================================
+  // DISPATCH ENGINE
+  // =========================================================================
+  window.triggerDispatch = function() {
+    if (state.estop) {
+      alert('Emergency Stop is active. Clear E-stop before dispatching.');
+      return;
+    }
+    const selectBot = document.getElementById('dispatch-select-bot');
+    const selectDest = document.getElementById('dispatch-select-target');
+    const botId = selectBot.value;
+    const destKey = selectDest.value;
+
+    const b = bots[botId];
+    const dest = waypoints[destKey];
+    if (!b || !dest) return;
+
+    b.targetX = dest.x;
+    b.targetY = dest.y;
+    b.state = 'navigating';
+    b.path = [
+      [b.x, b.y],
+      [(b.x + dest.x) / 2, b.y],
+      [dest.x, dest.y]
+    ];
+    b.pathIndex = 0;
+
+    logV2X(`DISPATCH: ${botId} route assigned to ${dest.name}. Calculating obstacle-free kinematic trajectory.`);
+    playBeep(850, 'triangle', 0.08);
+    renderFleetList();
+  };
+
+  // =========================================================================
+  // 2D CANVAS WAREHOUSE DIGITAL TWIN RENDERER
+  // =========================================================================
+  const canvas = document.getElementById('warehouse-canvas');
+  const ctx = canvas.getContext('2d');
+
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * window.devicePixelRatio || 1000;
+    canvas.height = rect.height * window.devicePixelRatio || 620;
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  function drawWarehouseMap() {
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    ctx.save();
+    // Apply zoom & pan transformations
+    ctx.translate(state.panX, state.panY);
+    ctx.scale(state.zoom, state.zoom);
+
+    const scaleX = w / 1000;
+    const scaleY = h / 620;
+
+    // Draw Floor Grid
+    ctx.strokeStyle = '#121d2d';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < 1000; x += 40) {
+      ctx.beginPath();
+      ctx.moveTo(x * scaleX, 0);
+      ctx.lineTo(x * scaleX, 620 * scaleY);
+      ctx.stroke();
+    }
+    for (let y = 0; y < 620; y += 40) {
+      ctx.beginPath();
+      ctx.moveTo(0, y * scaleY);
+      ctx.lineTo(1000 * scaleX, y * scaleY);
+      ctx.stroke();
+    }
+
+    // DRAW ZONES
+    if (state.layers.zones) {
+      // Storage Racks A to F
+      const racks = [
+        { x: 70, y: 70, w: 100, h: 140, label: 'HIGH-BAY RACK A' },
+        { x: 210, y: 70, w: 100, h: 140, label: 'HIGH-BAY RACK B' },
+        { x: 350, y: 70, w: 100, h: 140, label: 'PALLET RACK C' },
+        { x: 70, y: 310, w: 100, h: 140, label: 'COLD STORAGE D' },
+        { x: 210, y: 310, w: 100, h: 140, label: 'OVERFLOW RACK E' },
+        { x: 350, y: 310, w: 100, h: 140, label: 'BULK STORAGE F' }
+      ];
+      racks.forEach(r => {
+        ctx.fillStyle = '#0f1826';
+        ctx.strokeStyle = '#1d2e46';
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(r.x * scaleX, r.y * scaleY, r.w * scaleX, r.h * scaleY);
+        ctx.strokeRect(r.x * scaleX, r.y * scaleY, r.w * scaleX, r.h * scaleY);
+
+        // Rack internal shelf lines
+        ctx.strokeStyle = '#18273c';
+        for (let i = 25; i < r.h; i += 28) {
+          ctx.beginPath();
+          ctx.moveTo(r.x * scaleX, (r.y + i) * scaleY);
+          ctx.lineTo((r.x + r.w) * scaleX, (r.y + i) * scaleY);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = '#4a6282';
+        ctx.font = '9px "IBM Plex Mono", monospace';
+        ctx.fillText(r.label, (r.x + 8) * scaleX, (r.y + 16) * scaleY);
+      });
+
+      // Packing Stations
+      const packStations = [
+        { x: 570, y: 80, w: 100, h: 120, label: 'PACK STATION 1' },
+        { x: 570, y: 320, w: 100, h: 120, label: 'PACK STATION 2' }
+      ];
+      packStations.forEach(p => {
+        ctx.fillStyle = '#101a28';
+        ctx.strokeStyle = '#00f2fe';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(p.x * scaleX, p.y * scaleY, p.w * scaleX, p.h * scaleY);
+        ctx.setLineDash([]);
+        ctx.fillRect(p.x * scaleX, p.y * scaleY, p.w * scaleX, p.h * scaleY);
+
+        ctx.fillStyle = '#00f2fe';
+        ctx.font = '9px "IBM Plex Mono", monospace';
+        ctx.fillText(p.label, (p.x + 6) * scaleX, (p.y + 16) * scaleY);
+      });
+
+      // Docks 1 & 2
+      const docks = [
+        { x: 740, y: 70, w: 180, h: 120, label: 'INBOUND DOCK 1' },
+        { x: 740, y: 210, w: 180, h: 120, label: 'OUTBOUND DOCK 2' }
+      ];
+      docks.forEach(d => {
+        ctx.fillStyle = '#0e1622';
+        ctx.strokeStyle = '#2b4163';
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(d.x * scaleX, d.y * scaleY, d.w * scaleX, d.h * scaleY);
+        ctx.strokeRect(d.x * scaleX, d.y * scaleY, d.w * scaleX, d.h * scaleY);
+
+        ctx.fillStyle = '#8fa3be';
+        ctx.font = '10px "IBM Plex Mono", monospace';
+        ctx.fillText(d.label, (d.x + 12) * scaleX, (d.y + 20) * scaleY);
+      });
+
+      // Inductive Charging Hub (Bays 1 & 2)
+      ctx.fillStyle = 'rgba(0, 230, 118, 0.05)';
+      ctx.strokeStyle = 'rgba(0, 230, 118, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.fillRect(580 * scaleX, 470 * scaleY, 260 * scaleX, 90 * scaleY);
+      ctx.strokeRect(580 * scaleX, 470 * scaleY, 260 * scaleX, 90 * scaleY);
+      ctx.fillStyle = '#00e676';
+      ctx.font = '9px "IBM Plex Mono", monospace';
+      ctx.fillText('INDUCTIVE RAPID CHARGE HUBS #1 & #2', 590 * scaleX, 485 * scaleY);
+
+      // Restricted / Hazard Zone
+      const rz = waypoints.RESTRICTED_ZONE;
+      ctx.fillStyle = 'rgba(255, 51, 102, 0.08)';
+      ctx.strokeStyle = '#ff3366';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(rz.x * scaleX, rz.y * scaleY, rz.w * scaleX, rz.h * scaleY);
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#ff3366';
+      ctx.font = '8.5px "IBM Plex Mono", monospace';
+      ctx.fillText('NO-ENTRY ZONE', (rz.x + 8) * scaleX, (rz.y + 16) * scaleY);
+    }
+
+    // DRAW V2X MESH NETWORK INTER-BOT LINKS
+    if (state.layers.mesh && !state.estop) {
+      ctx.strokeStyle = 'rgba(168, 85, 247, 0.25)';
+      ctx.lineWidth = 1;
+      const botArr = Object.values(bots);
+      for (let i = 0; i < botArr.length; i++) {
+        for (let j = i + 1; j < botArr.length; j++) {
+          const b1 = botArr[i];
+          const b2 = botArr[j];
+          const dist = Math.hypot(b1.x - b2.x, b1.y - b2.y);
+          if (dist < 260) {
+            ctx.beginPath();
+            ctx.moveTo(b1.x * scaleX, b1.y * scaleY);
+            ctx.lineTo(b2.x * scaleX, b2.y * scaleY);
+            ctx.stroke();
+
+            // Pulsing packet dot
+            const t = (Date.now() / 1000 + i * 0.3) % 1;
+            const px = (b1.x + (b2.x - b1.x) * t) * scaleX;
+            const py = (b1.y + (b2.y - b1.y) * t) * scaleY;
+            ctx.fillStyle = '#a855f7';
+            ctx.beginPath();
+            ctx.arc(px, py, 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+    }
+
+    // DRAW ACTIVE PATHS
+    if (state.layers.paths) {
+      Object.values(bots).forEach(b => {
+        if (b.path && b.path.length > 1) {
+          ctx.strokeStyle = b.id === state.selectedBotId ? 'rgba(0, 242, 254, 0.8)' : 'rgba(0, 242, 254, 0.25)';
+          ctx.lineWidth = b.id === state.selectedBotId ? 2 : 1;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(b.path[0][0] * scaleX, b.path[0][1] * scaleY);
+          for (let i = 1; i < b.path.length; i++) {
+            ctx.lineTo(b.path[i][0] * scaleX, b.path[i][1] * scaleY);
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      });
+    }
+
+    // DRAW PEDESTRIAN HUMAN WORKER
+    const hx = human.x * scaleX;
+    const hy = human.y * scaleY;
+    // Safety Proximity Halo
+    ctx.strokeStyle = state.targetLock ? 'rgba(255, 51, 102, 0.7)' : 'rgba(255, 179, 0, 0.5)';
+    ctx.fillStyle = state.targetLock ? 'rgba(255, 51, 102, 0.12)' : 'rgba(255, 179, 0, 0.08)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(hx, hy, human.radius * scaleX, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Human Center Dot
+    ctx.fillStyle = state.targetLock ? '#ff3366' : '#ffb300';
+    ctx.beginPath();
+    ctx.arc(hx, hy, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Human Label & Bounding Box
+    ctx.strokeStyle = state.targetLock ? '#ff3366' : '#ffb300';
+    ctx.strokeRect(hx - 12, hy - 12, 24, 24);
+    ctx.font = '10px "IBM Plex Mono", monospace';
+    ctx.fillText('HUMAN: ' + human.id, hx + 16, hy + 4);
+
+    // DRAW ALL 8 AUTONOMOUS MOBILE ROBOTS
+    Object.values(bots).forEach(b => {
+      const bx = b.x * scaleX;
+      const by = b.y * scaleY;
+
+      // LiDAR Safety Halo
+      if (state.layers.lidar && !state.estop && b.state !== 'idle' && b.state !== 'charging') {
+        ctx.strokeStyle = b.state === 'safety_hold' ? 'rgba(255, 179, 0, 0.4)' : 'rgba(0, 242, 254, 0.25)';
+        ctx.fillStyle = b.state === 'safety_hold' ? 'rgba(255, 179, 0, 0.06)' : 'rgba(0, 242, 254, 0.04)';
+        ctx.beginPath();
+        ctx.arc(bx, by, 28 * scaleX, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      // AMR Chassis
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.rotate((b.heading * Math.PI) / 180);
+
+      // Chassis Body
+      ctx.fillStyle = b.id === state.selectedBotId ? '#00f2fe' : b.state === 'charging' ? '#00e676' : b.state === 'safety_hold' ? '#ffb300' : '#38bdf8';
+      ctx.beginPath();
+      ctx.roundRect(-10, -8, 20, 16, 3);
+      ctx.fill();
+
+      // Heading indicator direction arrow
+      ctx.fillStyle = '#04111d';
+      ctx.beginPath();
+      ctx.moveTo(8, 0);
+      ctx.lineTo(2, -4);
+      ctx.lineTo(2, 4);
+      ctx.closePath();
+      ctx.fill();
+
+      // Payload / Attachment graphic
+      if (b.attachment.payloadKg > 0) {
+        ctx.fillStyle = '#ffb300';
+        ctx.fillRect(-6, -4, 8, 8);
+      }
+
+      ctx.restore();
+
+      // Bot ID & Status Label
+      ctx.fillStyle = b.id === state.selectedBotId ? '#00f2fe' : '#edf2f8';
+      ctx.font = '10px "IBM Plex Mono", monospace';
+      ctx.fillText(b.id, bx + 14, by + 4);
+    });
+
+    ctx.restore();
+  }
+
+  // =========================================================================
+  // ANIMATION & PHYSICS SIMULATION LOOP
+  // =========================================================================
+  let lastFrameTime = performance.now();
+
+  function simulationTick(currentTime) {
+    const dt = Math.min((currentTime - lastFrameTime) / 1000, 0.1);
+    lastFrameTime = currentTime;
+
+    if (!state.estop) {
+      // Advance bots along their active paths
+      Object.values(bots).forEach(b => {
+        if (b.state === 'navigating' && b.path && b.path.length > 0) {
+          const target = b.path[b.pathIndex];
+          if (target) {
+            const dx = target[0] - b.x;
+            const dy = target[1] - b.y;
+            const dist = Math.hypot(dx, dy);
+
+            // Compute heading in degrees
+            b.heading = (Math.atan2(dy, dx) * 180) / Math.PI;
+
+            const step = b.speed * 40 * dt;
+            if (dist > step) {
+              b.x += (dx / dist) * step;
+              b.y += (dy / dist) * step;
+              b.distanceKm += (step / 1000) * 0.05;
+              b.battery = Math.max(5, b.battery - 0.008 * dt);
+            } else {
+              b.x = target[0];
+              b.y = target[1];
+              b.pathIndex = (b.pathIndex + 1) % b.path.length;
+              b.tasksCompleted++;
+            }
+          }
+        } else if (b.state === 'charging') {
+          b.battery = Math.min(100, b.battery + 0.12 * dt);
+        }
+      });
+
+      // If internet is off, buffer packets locally
+      if (!state.internetOn) {
+        state.bufferedPackets += Math.floor(Math.random() * 3 + 1);
+        const counter = document.getElementById('buffer-packet-counter');
+        const queueEl = document.getElementById('net-metric-queue');
+        if (counter) counter.textContent = `Telemetry buffer: ${state.bufferedPackets} packets`;
+        if (queueEl) queueEl.textContent = `${state.bufferedPackets} msgs`;
+      }
+    }
+
+    drawWarehouseMap();
+    requestAnimationFrame(simulationTick);
+  }
+  requestAnimationFrame(simulationTick);
+
+  // Click on Canvas to select bot
+  canvas.addEventListener('click', e => {
+    const rect = canvas.getBoundingClientRect();
+    const clickX = ((e.clientX - rect.left) / rect.width) * 1000;
+    const clickY = ((e.clientY - rect.top) / rect.height) * 620;
+
+    let foundBot = null;
+    Object.values(bots).forEach(b => {
+      const d = Math.hypot(b.x - clickX, b.y - clickY);
+      if (d < 30) foundBot = b.id;
+    });
+
+    if (foundBot) {
+      selectBot(foundBot);
+    }
+  });
+
+  // =========================================================================
+  // COCKPIT & TELEOPERATION CONTROLLER
+  // =========================================================================
+  window.selectCockpitBot = function(id) {
+    state.selectedBotId = id;
+    updateCockpitUI();
+    playBeep(700, 'sine', 0.04);
+  };
+
+  function updateCockpitUI() {
+    const b = bots[state.selectedBotId];
+    if (!b) return;
+
+    document.getElementById('cockpit-bot-tag').textContent = b.id;
+    document.getElementById('cockpit-select-bot').value = b.id;
+    document.getElementById('cp-attachment-name').textContent = b.attachment.type;
+    document.getElementById('cp-payload-weight').textContent = `${b.attachment.payloadKg} kg · ${b.attachment.payloadName}`;
+    document.getElementById('cam-overlay-bot').textContent = `STREAM: ${b.id} [STEREO_CAMERA_FRONT]`;
+    document.getElementById('cam-overlay-kin').textContent = `SPEED: ${b.speed.toFixed(1)} m/s · HEADING: ${b.heading.toFixed(0)}° · STEER: 0.0°`;
+
+    const lockChip = document.getElementById('cp-lock-status');
+    if (b.attachment.locked) {
+      lockChip.textContent = 'LOCKED & SECURE';
+      lockChip.className = 'panel-tag emerald';
+    } else {
+      lockChip.textContent = 'UNLOCKED / OPEN';
+      lockChip.className = 'panel-tag crimson';
+    }
+  }
+
+  window.toggleSelectedAttachment = function() {
+    const b = bots[state.selectedBotId];
+    if (b) {
+      b.attachment.locked = !b.attachment.locked;
+      updateCockpitUI();
+      logV2X(`ACTUATOR: ${b.id} attachment actuator set to ${b.attachment.locked ? 'LOCKED' : 'RELEASED'}.`);
+      playBeep(b.attachment.locked ? 880 : 440, 'triangle', 0.1);
+    }
+  };
+
+  window.teleopJog = function(action) {
+    const b = bots[state.selectedBotId];
+    if (!b || state.estop) return;
+
+    if (action === 'up') {
+      b.y -= 25;
+      b.heading = 270;
+      b.state = 'navigating';
+    } else if (action === 'down') {
+      b.y += 25;
+      b.heading = 90;
+      b.state = 'navigating';
+    } else if (action === 'left') {
+      b.x -= 25;
+      b.heading = 180;
+      b.state = 'navigating';
+    } else if (action === 'right') {
+      b.x += 25;
+      b.heading = 0;
+      b.state = 'navigating';
+    } else if (action === 'stop') {
+      b.state = 'idle';
+    } else if (action === 'dock') {
+      b.x = waypoints.CHARGER_1.x;
+      b.y = waypoints.CHARGER_1.y;
+      b.state = 'charging';
+      logV2X(`TELEOP: ${b.id} docked at Inductive Charger #1.`);
+    } else if (action === 'resume') {
+      b.state = 'navigating';
+      logV2X(`TELEOP: ${b.id} autonomous trajectory resumed.`);
+    }
+    updateCockpitUI();
+    renderFleetList();
+    playBeep(680, 'sine', 0.05);
+  };
+
+  // Keyboard WASD Controls for Teleoperation
+  window.addEventListener('keydown', e => {
+    // Only capture if cockpit tab is active and not focused in input
+    const activeTab = document.querySelector('.nav-tab.active');
+    if (activeTab && activeTab.dataset.tab === 'tab-telemetry' && document.activeElement.tagName !== 'INPUT') {
+      if (e.key === 'w' || e.key === 'W') teleopJog('up');
+      if (e.key === 's' || e.key === 'S') teleopJog('down');
+      if (e.key === 'a' || e.key === 'A') teleopJog('left');
+      if (e.key === 'd' || e.key === 'D') teleopJog('right');
+      if (e.key === ' ') teleopJog('stop');
+    }
+  });
+
+  // =========================================================================
+  // DYNAMIC CHARTS (PERFORMANCE ANALYTICS)
+  // =========================================================================
+  function renderBatteryChart() {
+    const c = document.getElementById('chart-battery');
+    if (!c) return;
+    const ctxChart = c.getContext('2d');
+    const w = c.width = c.clientWidth;
+    const h = c.height = c.clientHeight;
+
+    ctxChart.clearRect(0, 0, w, h);
+
+    // Grid lines
+    ctxChart.strokeStyle = '#182436';
+    ctxChart.lineWidth = 1;
+    for (let y = 30; y < h; y += 45) {
+      ctxChart.beginPath();
+      ctxChart.moveTo(0, y);
+      ctxChart.lineTo(w, y);
+      ctxChart.stroke();
+    }
+
+    // Battery Trend Line
+    ctxChart.strokeStyle = '#00f2fe';
+    ctxChart.lineWidth = 2.5;
+    ctxChart.beginPath();
+    const stepX = w / (batteryHistory.length - 1);
+    batteryHistory.forEach((val, idx) => {
+      const px = idx * stepX;
+      const py = h - (val / 100) * (h - 40) - 20;
+      if (idx === 0) ctxChart.moveTo(px, py);
+      else ctxChart.lineTo(px, py);
+    });
+    ctxChart.stroke();
+
+    // Area Fill
+    ctxChart.lineTo(w, h);
+    ctxChart.lineTo(0, h);
+    ctxChart.fillStyle = 'rgba(0, 242, 254, 0.06)';
+    ctxChart.fill();
+  }
+
+  function renderDistanceChart() {
+    const c = document.getElementById('chart-distance');
+    if (!c) return;
+    const ctxChart = c.getContext('2d');
+    const w = c.width = c.clientWidth;
+    const h = c.height = c.clientHeight;
+
+    ctxChart.clearRect(0, 0, w, h);
+
+    const botArr = Object.values(bots);
+    const barHeight = (h - 20) / botArr.length;
+
+    botArr.forEach((b, idx) => {
+      const y = idx * barHeight + 10;
+      const maxKm = 12;
+      const barW = (b.distanceKm / maxKm) * (w - 90);
+
+      ctxChart.fillStyle = '#111b29';
+      ctxChart.fillRect(80, y, w - 90, barHeight - 6);
+
+      ctxChart.fillStyle = '#00e676';
+      ctxChart.fillRect(80, y, barW, barHeight - 6);
+
+      ctxChart.fillStyle = '#8fa3be';
+      ctxChart.font = '10px "IBM Plex Mono", monospace';
+      ctxChart.fillText(b.id, 10, y + barHeight / 2);
+      ctxChart.fillStyle = '#edf2f8';
+      ctxChart.fillText(`${b.distanceKm.toFixed(1)} km`, barW + 86, y + barHeight / 2);
+    });
+  }
+
+  function renderThroughputChart() {
+    const c = document.getElementById('chart-throughput');
+    if (!c) return;
+    const ctxChart = c.getContext('2d');
+    const w = c.width = c.clientWidth;
+    const h = c.height = c.clientHeight;
+
+    ctxChart.clearRect(0, 0, w, h);
+
+    const barWidth = (w - 40) / hourlyThroughput.length;
+    hourlyThroughput.forEach((val, i) => {
+      const x = i * barWidth + 20;
+      const barH = (val / 35) * (h - 40);
+      const y = h - barH - 20;
+
+      ctxChart.fillStyle = '#a855f7';
+      ctxChart.fillRect(x, y, barWidth - 12, barH);
+
+      ctxChart.fillStyle = '#edf2f8';
+      ctxChart.font = '10px "IBM Plex Mono", monospace';
+      ctxChart.fillText(`${val}`, x + (barWidth - 12) / 2 - 6, y - 4);
+      ctxChart.fillStyle = '#51637c';
+      ctxChart.fillText(`H-${8 - i}`, x + (barWidth - 12) / 2 - 10, h - 4);
+    });
+  }
+
+  // =========================================================================
+  // AI HUMAN DETECTION RADAR CANVAS (TAB 5)
+  // =========================================================================
+  function renderRadarCanvas() {
+    const c = document.getElementById('canvas-human-radar');
+    if (!c) return;
+    const ctxRadar = c.getContext('2d');
+    const w = c.width = c.clientWidth;
+    const h = c.height = c.clientHeight;
+
+    ctxRadar.clearRect(0, 0, w, h);
+
+    const cx = w / 2;
+    const cy = h / 2;
+
+    // Concentric Radar Distance Rings
+    ctxRadar.strokeStyle = 'rgba(0, 242, 254, 0.2)';
+    ctxRadar.lineWidth = 1;
+    [60, 120, 180, 240].forEach(r => {
+      ctxRadar.beginPath();
+      ctxRadar.arc(cx, cy, r, 0, Math.PI * 2);
+      ctxRadar.stroke();
+    });
+
+    // Crosshairs
+    ctxRadar.beginPath();
+    ctxRadar.moveTo(cx, 0); ctxRadar.lineTo(cx, h);
+    ctxRadar.moveTo(0, cy); ctxRadar.lineTo(w, cy);
+    ctxRadar.stroke();
+
+    // Radar Sweep Beam
+    const angle = (Date.now() / 1200) % (Math.PI * 2);
+    ctxRadar.strokeStyle = 'rgba(0, 242, 254, 0.8)';
+    ctxRadar.beginPath();
+    ctxRadar.moveTo(cx, cy);
+    ctxRadar.lineTo(cx + Math.cos(angle) * 240, cy + Math.sin(angle) * 240);
+    ctxRadar.stroke();
+
+    // Draw Human in Radar
+    const hx = cx + 80;
+    const hy = cy - 40;
+    ctxRadar.fillStyle = state.targetLock ? '#ff3366' : '#ffb300';
+    ctxRadar.beginPath();
+    ctxRadar.arc(hx, hy, 8, 0, Math.PI * 2);
+    ctxRadar.fill();
+
+    ctxRadar.strokeStyle = state.targetLock ? '#ff3366' : '#ffb300';
+    ctxRadar.strokeRect(hx - 14, hy - 14, 28, 28);
+    ctxRadar.font = '11px "IBM Plex Mono", monospace';
+    ctxRadar.fillText('TARGET: OPERATOR (98.6%)', hx + 18, hy + 4);
+  }
+
+  // =========================================================================
+  // HEALTH SUBSYSTEMS & FAULT INJECTION (TAB 4)
+  // =========================================================================
+  function renderSubsystemTable() {
+    const tbody = document.getElementById('subsystem-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    Object.values(bots).forEach(b => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="mono" style="font-weight:700; color:var(--cyan);">${b.id}</td>
+        <td><span class="panel-tag ${b.subsystems.motor === 'NOMINAL' ? 'emerald' : 'crimson'}">${b.subsystems.motor}</span></td>
+        <td><span class="panel-tag ${b.subsystems.lidar === 'NOMINAL' ? 'emerald' : 'amber'}">${b.subsystems.lidar}</span></td>
+        <td><span class="panel-tag emerald">${b.subsystems.bms}</span></td>
+        <td class="mono">${b.subsystems.temp}°C</td>
+        <td><span class="state-badge ${b.state}">${b.state}</span></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+  renderSubsystemTable();
+
+  function renderFaultsList() {
+    const list = document.getElementById('fault-cards-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    if (faults.length === 0) {
+      list.innerHTML = '<div style="font-size:11.5px; color:var(--text-muted); text-align:center; padding:20px;">No active Diagnostic Trouble Codes (DTC). Systems fully operational.</div>';
+      return;
+    }
+
+    faults.forEach(f => {
+      const card = document.createElement('div');
+      card.className = `fault-item-card ${f.sev}`;
+      card.innerHTML = `
+        <div>
+          <div class="fault-code ${f.sev}">${f.code} · ${f.botId}</div>
+          <div class="fault-desc">${f.desc}</div>
+        </div>
+        <button class="quick-btn" onclick="clearFault('${f.id}')">Clear DTC</button>
+      `;
+      list.appendChild(card);
+    });
+  }
+  renderFaultsList();
+
+  window.injectTestFault = function() {
+    const id = 'FLT-' + Math.floor(Math.random() * 800 + 200);
+    const botIds = Object.keys(bots);
+    const targetBot = botIds[Math.floor(Math.random() * botIds.length)];
+    faults.unshift({
+      id,
+      botId: targetBot,
+      code: 'DTC-E402',
+      desc: `Inverter phase current variance on ${targetBot} traction motor.`,
+      sev: 'warn'
+    });
+    bots[targetBot].subsystems.motor = 'FAULT';
+    renderFaultsList();
+    renderSubsystemTable();
+    logV2X(`ALERT: Injected Diagnostic Trouble Code ${id} on ${targetBot}.`);
+    playBeep(350, 'sawtooth', 0.2);
+  };
+
+  window.clearFault = function(id) {
+    const f = faults.find(item => item.id === id);
+    if (f && bots[f.botId]) {
+      bots[f.botId].subsystems.motor = 'NOMINAL';
+    }
+    faults = faults.filter(item => item.id !== id);
+    renderFaultsList();
+    renderSubsystemTable();
+    logV2X(`MAINTENANCE: Trouble code ${id} acknowledged and cleared.`);
+    playBeep(880, 'sine', 0.08);
+  };
+
+  window.calibrateSensor = function(botId) {
+    if (bots[botId]) {
+      bots[botId].subsystems.lidar = 'NOMINAL';
+      renderSubsystemTable();
+      logV2X(`CALIBRATION: Sensor recalibration completed for ${botId}. Status nominal.`);
+      playBeep(920, 'sine', 0.1);
+    }
+  };
+
+  // =========================================================================
+  // V2X MESH LOG & FLEET BROADCAST (TAB 6)
+  // =========================================================================
+  const v2xTerminal = document.getElementById('v2x-terminal');
+
+  function logV2X(message, type = 'info') {
+    if (!v2xTerminal) return;
+    const now = new Date();
+    const ts = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${type}`;
+    entry.innerHTML = `<span class="log-ts">[${ts}]</span>${message}`;
+    v2xTerminal.prepend(entry);
+  }
+
+  window.sendBroadcastV2X = function() {
+    const input = document.getElementById('v2x-broadcast-input');
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    logV2X(`OPERATOR_BROADCAST: "${msg}" dispatched to all 8 fleet transceivers.`, 'v2x');
+    input.value = '';
+    playBeep(950, 'triangle', 0.08);
+  };
+
+  // Autonomous Inter-Bot V2X Message Generator
+  const sampleV2X = [
+    { from: 'AMR-01', to: 'AMR-03', text: 'Yielding right-of-way at Intersection B3.' },
+    { from: 'AMR-05', to: 'FLEET', text: 'Payload hitched (750 kg). Speed profile clamped to 1.0 m/s.' },
+    { from: 'AMR-02', to: 'AMR-07', text: 'Bay D aisle clear. Resuming cruise.' },
+    { from: 'AMR-06', to: 'SERVER', text: 'Battery reached 35% on Pad 1. Initiating cell balance.' }
+  ];
+
+  setInterval(() => {
+    if (!state.estop && Math.random() < 0.45) {
+      const item = sampleV2X[Math.floor(Math.random() * sampleV2X.length)];
+      logV2X(`[V2X] ${item.from} → ${item.to}: "${item.text}"`, 'v2x');
+    }
+  }, 4500);
+
+  // =========================================================================
+  // TELEMETRY INSPECTOR DRAWER
+  // =========================================================================
+  function openDrawerForBot(id) {
+    const b = bots[id];
+    if (!b) return;
+    document.getElementById('drawer-bot-title').textContent = `${b.id} Telemetry Inspector`;
+    document.getElementById('drawer-state').textContent = b.state.toUpperCase();
+    document.getElementById('drawer-battery').textContent = `${b.battery.toFixed(0)}%`;
+    document.getElementById('drawer-speed').textContent = `${b.speed.toFixed(1)} m/s`;
+    document.getElementById('drawer-heading').textContent = `${b.heading.toFixed(0)}°`;
+    document.getElementById('drawer-coords').textContent = `X: ${b.x.toFixed(0)}, Y: ${b.y.toFixed(0)}`;
+    document.getElementById('drawer-payload').textContent = `${b.attachment.payloadName} (${b.attachment.payloadKg}kg)`;
+    document.getElementById('telemetry-drawer').style.display = 'block';
+  }
+
+  window.closeDrawer = function() {
+    document.getElementById('telemetry-drawer').style.display = 'none';
+  };
+
+  window.focusBotInCockpit = function() {
+    closeDrawer();
+    const tabCockpit = document.querySelector('[data-tab="tab-telemetry"]');
+    if (tabCockpit) tabCockpit.click();
+    selectCockpitBot(state.selectedBotId);
+  };
+
+  window.drawerDispatch = function() {
+    closeDrawer();
+    const tabMap = document.querySelector('[data-tab="tab-map"]');
+    if (tabMap) tabMap.click();
+    document.getElementById('dispatch-select-bot').value = state.selectedBotId;
+  };
+
+  // =========================================================================
+  // REAL-TIME CLOCK & PERIODIC TELEMETRY UPDATES
+  // =========================================================================
+  function updateClock() {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2, '0');
+    const m = now.getMinutes().toString().padStart(2, '0');
+    const s = now.getSeconds().toString().padStart(2, '0');
+    document.getElementById('hud-clock').textContent = `${h}:${m}:${s}`;
+
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    document.getElementById('hud-date').textContent = `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]} · Shift 1`;
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // Initial fleet roster & log render
+  renderFleetList();
+  updateCockpitUI();
+  logV2X('FLEETDECK PRO V3.0 online. 8 AMR kinematic agents active.');
+  logV2X('Warehouse digital twin mapped. Safety radar nominal.');
+
+})();
+</script>
+</body>
+</html>
